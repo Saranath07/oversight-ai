@@ -1,0 +1,7 @@
+{
+  "num_sequences": 37397,
+  "ball_vector_dim": 18,
+  "context_vector_dim": 20,
+  "vocab_size": 24,
+  "max_sequence_length": 128
+}
