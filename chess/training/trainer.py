@@ -106,6 +106,9 @@ class ChessTrainer:
         elif self.use_wandb and not WANDB_AVAILABLE:
             print("Warning: wandb not available, disabling logging")
             self.use_wandb = False
+        
+        # Load checkpoint if exists
+        self.load_checkpoint()
     
     def train_epoch(self) -> Dict[str, float]:
         """Train for one epoch."""
@@ -251,6 +254,28 @@ class ChessTrainer:
             'accuracy': avg_accuracy
         }
     
+    def load_checkpoint(self):
+        """Load checkpoint if exists."""
+        best_model_path = os.path.join(self.save_dir, "best_model.pt")
+        
+        if os.path.exists(best_model_path):
+            print(f"Loading checkpoint from {best_model_path}")
+            checkpoint = torch.load(best_model_path, map_location=self.device)
+            
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            
+            self.epoch = checkpoint['epoch']
+            self.global_step = checkpoint['global_step']
+            self.best_val_loss = checkpoint['best_val_loss']
+            self.train_losses = checkpoint.get('train_losses', [])
+            self.val_losses = checkpoint.get('val_losses', [])
+            
+            print(f"Resumed from epoch {self.epoch + 1}, best val loss: {self.best_val_loss:.4f}")
+        else:
+            print("No checkpoint found, starting from scratch")
+    
     def save_checkpoint(self, is_best: bool = False):
         """Save model checkpoint."""
         checkpoint = {
@@ -286,7 +311,9 @@ class ChessTrainer:
         print(f"Model parameters: {sum(p.numel() for p in self.model.parameters()):,}")
         print(f"Training on device: {self.device}")
         
-        for epoch in range(num_epochs):
+        start_epoch = self.epoch + 1 if self.epoch > 0 else 0
+        
+        for epoch in range(start_epoch, start_epoch + num_epochs):
             self.epoch = epoch
             
             # Train
