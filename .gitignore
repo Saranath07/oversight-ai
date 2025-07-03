@@ -5,3 +5,8 @@ checkpoints/
 *.pt
 *.pkl
 runs/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
