@@ -1,0 +1,8 @@
+torch>=2.0.0
+numpy>=1.21.0
+tqdm>=4.64.0
+chess>=1.999
+gym-chess>=0.1.0
+wandb>=0.13.0
+matplotlib>=3.5.0
+seaborn>=0.11.0

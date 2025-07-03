@@ -1,0 +1,118 @@
+{
+  "overall_score": 0.23090007406172716,
+  "metrics": {
+    "basic": {
+      "exact_match_accuracy": 0.005508463245714897,
+      "token_accuracy": 0.3743321718931475,
+      "total_sequences": 37397,
+      "exact_matches": 206,
+      "total_tokens": 232470,
+      "token_matches": 87021,
+      "position_accuracy": {
+        "0": 0.37933524079471614,
+        "1": 0.37080514479771104,
+        "2": 0.3700564216380993,
+        "3": 0.3730780543893895,
+        "4": 0.37596598657646335,
+        "5": 0.38214295264326015,
+        "6": 0.35035419126328216,
+        "7": 0.345045045045045,
+        "8": 0.3522727272727273,
+        "9": 0.2916666666666667,
+        "10": 0.0
+      }
+    },
+    "ball_outcomes": {
+      "outcome_accuracies": {
+        "runs": 0.9997564254954305,
+        "wickets": 0.0,
+        "extras": 0.0,
+        "dots": 0.0,
+        "boundaries": 0.0
+      },
+      "outcome_stats": {
+        "runs": {
+          "correct": 102613,
+          "total": 102638,
+          "predicted": 232394
+        },
+        "wickets": {
+          "correct": 0,
+          "total": 11640,
+          "predicted": 0
+        },
+        "extras": {
+          "correct": 0,
+          "total": 10398,
+          "predicted": 0
+        },
+        "dots": {
+          "correct": 0,
+          "total": 66860,
+          "predicted": 0
+        },
+        "boundaries": {
+          "correct": 0,
+          "total": 37515,
+          "predicted": 0
+        }
+      }
+    },
+    "runs": {
+      "exact_run_accuracy": 0.09075594299007941,
+      "mean_run_error": 3.680321950958633,
+      "median_run_error": 3.0,
+      "std_run_error": 3.2564582581841965,
+      "max_run_error": 31,
+      "total_predicted_runs": 232394,
+      "total_target_runs": 301703
+    },
+    "sequence_length": {
+      "exact_length_accuracy": 0.9824584859748108,
+      "mean_length_error": 0.04642083589592748,
+      "median_length_error": 0.0,
+      "predicted_avg_length": 6.214241784100329,
+      "target_avg_length": 6.17188544535658
+    },
+    "loss": {
+      "mean_loss": 0.8041121363639832,
+      "median_loss": 0.4943465292453766,
+      "std_loss": 1.1048799753189087,
+      "perplexity": 2.2347114086151123
+    },
+    "token_distribution": {
+      "predicted_distribution": {
+        "1": 232394
+      },
+      "target_distribution": {
+        "1": 87041,
+        "0": 66860,
+        "6": 11531,
+        "2": 14839,
+        "4": 25984,
+        "W": 11640,
+        "wd": 6474,
+        "nb": 372,
+        "lb": 3536,
+        "nb2": 331,
+        "wd3": 52,
+        "3": 705,
+        "wd2": 284,
+        "nb3": 56,
+        "nb7": 77,
+        "5": 53,
+        "wd5": 246,
+        "b": 587,
+        "nb5": 133,
+        "wd4": 7,
+        "nb4": 1,
+        "wd7": 1
+      },
+      "total_predicted_tokens": 232394,
+      "total_target_tokens": 230810
+    }
+  },
+  "model_path": "checkpoints/best_model.pt",
+  "data_dir": "data_generation/processed",
+  "total_sequences": 37397
+}
