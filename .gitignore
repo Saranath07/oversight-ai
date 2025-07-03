@@ -1,3 +1,7 @@
 data
 .venv
 data_generation/processed
+checkpoints/
+*.pt
+*.pkl
+runs/
