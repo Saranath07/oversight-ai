@@ -1,0 +1,16 @@
+{
+  "total_samples": 5,
+  "total_moves": 0,
+  "move_distribution": {},
+  "piece_activity": {},
+  "special_moves": {},
+  "game_length_distribution": [],
+  "opening_moves": {},
+  "sample_games": [
+    "training_examples",
+    "vocabulary",
+    "vocab_size",
+    "policy_size",
+    "total_examples"
+  ]
+}

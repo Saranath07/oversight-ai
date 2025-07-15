@@ -1,0 +1,216 @@
+{
+  "training_stats": {},
+  "tactical_accuracy": {
+    "mate_in_1": {
+      "total": 5,
+      "solved": 4,
+      "positions": [
+        {
+          "name": "Back Rank Mate in 1",
+          "fen": "6k1/5ppp/8/8/8/8/8/R6K w - - 0 1",
+          "solution": "Ra8#",
+          "ai_move": "a1a8",
+          "correct": true,
+          "category": "back_rank"
+        },
+        {
+          "name": "Queen Mate in 1",
+          "fen": "7k/6pp/8/8/8/8/8/Q6K w - - 0 1",
+          "solution": "Qa8#",
+          "ai_move": "a1a8",
+          "correct": true,
+          "category": "queen_mate"
+        },
+        {
+          "name": "Smothered Mate in 1",
+          "fen": "6rk/6pp/8/8/8/8/8/5N1K w - - 0 1",
+          "solution": "Nf7#",
+          "ai_move": "f1d2",
+          "correct": false,
+          "category": "smothered"
+        },
+        {
+          "name": "Rook and King Mate in 1",
+          "fen": "7k/8/6K1/8/8/8/8/7R w - - 0 1",
+          "solution": "Rh8#",
+          "ai_move": "g6f7",
+          "correct": true,
+          "category": "rook_mate"
+        },
+        {
+          "name": "Bishop and Queen Mate in 1",
+          "fen": "7k/6pp/8/8/8/8/6B1/Q6K w - - 0 1",
+          "solution": "Qa8#",
+          "ai_move": "a1a8",
+          "correct": true,
+          "category": "bishop_queen"
+        }
+      ],
+      "accuracy": 80.0
+    },
+    "mate_in_2": {
+      "total": 5,
+      "solved": 3,
+      "positions": [
+        {
+          "name": "Queen and Rook Mate in 2",
+          "fen": "7k/8/6K1/8/8/8/7Q/7R w - - 0 1",
+          "solution": "Qh7+ Kg8 Rh8#",
+          "ai_move": "h2b8",
+          "correct": true,
+          "category": "queen_rook"
+        },
+        {
+          "name": "Two Rooks Mate in 2",
+          "fen": "7k/8/6K1/8/8/8/7R/7R w - - 0 1",
+          "solution": "R1h7+ Kg8 R7h8#",
+          "ai_move": "g6f7",
+          "correct": true,
+          "category": "two_rooks"
+        },
+        {
+          "name": "Queen and Bishop Mate in 2",
+          "fen": "7k/6pp/8/8/8/8/6B1/Q6K w - - 0 1",
+          "solution": "Qh7+ Kg8 Qh8#",
+          "ai_move": "a1a8",
+          "correct": true,
+          "category": "queen_bishop"
+        },
+        {
+          "name": "Anastasia's Mate in 2",
+          "fen": "2kr4/ppp5/8/8/8/8/8/R3K2R w - - 0 1",
+          "solution": "Ra8+ Kb7 R1a7#",
+          "ai_move": "a1a7",
+          "correct": false,
+          "category": "anastasia"
+        },
+        {
+          "name": "Arabian Mate in 2",
+          "fen": "6rk/6pp/8/8/8/8/8/5RNK w - - 0 1",
+          "solution": "Rf8+ Rxf8 Ne7#",
+          "ai_move": "h1h2",
+          "correct": false,
+          "category": "arabian"
+        }
+      ],
+      "accuracy": 60.0
+    },
+    "mate_in_3": {
+      "total": 2,
+      "solved": 2,
+      "positions": [
+        {
+          "name": "Ladder Mate in 3",
+          "fen": "7k/8/6K1/8/8/8/7R/7R w - - 0 1",
+          "solution": "R2h7+ Kg8 R1h8+ Kf7 R7h7#",
+          "ai_move": "g6f7",
+          "correct": true,
+          "category": "ladder"
+        },
+        {
+          "name": "Queen and Knight Mate in 3",
+          "fen": "7k/6pp/8/8/8/8/6N1/Q6K w - - 0 1",
+          "solution": "Qh7+ Kg8 Nf6+ Kf8 Qh8#",
+          "ai_move": "a1a8",
+          "correct": true,
+          "category": "queen_knight"
+        }
+      ],
+      "accuracy": 100.0
+    },
+    "by_category": {
+      "back_rank": {
+        "total": 1,
+        "solved": 1
+      },
+      "queen_mate": {
+        "total": 1,
+        "solved": 1
+      },
+      "smothered": {
+        "total": 1,
+        "solved": 0
+      },
+      "rook_mate": {
+        "total": 1,
+        "solved": 1
+      },
+      "bishop_queen": {
+        "total": 1,
+        "solved": 1
+      },
+      "queen_rook": {
+        "total": 1,
+        "solved": 1
+      },
+      "two_rooks": {
+        "total": 1,
+        "solved": 1
+      },
+      "queen_bishop": {
+        "total": 1,
+        "solved": 1
+      },
+      "anastasia": {
+        "total": 1,
+        "solved": 0
+      },
+      "arabian": {
+        "total": 1,
+        "solved": 0
+      },
+      "ladder": {
+        "total": 1,
+        "solved": 1
+      },
+      "queen_knight": {
+        "total": 1,
+        "solved": 1
+      }
+    }
+  },
+  "position_analysis": {},
+  "move_quality": {
+    "positions_analyzed": 5,
+    "move_quality_scores": [
+      0.5,
+      0.8999999999999999,
+      0.7,
+      0.5,
+      0.7
+    ],
+    "phase_performance": {
+      "opening": [
+        0.5,
+        0.8999999999999999
+      ],
+      "middlegame": [
+        0.7
+      ],
+      "endgame": [
+        0.5,
+        0.7
+      ]
+    },
+    "average_quality": 0.6599999999999999,
+    "quality_std": 0.1496662954709576
+  },
+  "endgame_performance": {},
+  "model_info": {
+    "checkpoint_path": "checkpoints/best_model.pt",
+    "epoch": 1,
+    "validation_loss": 7.404265244801839,
+    "train_loss": "unknown",
+    "device": "mps",
+    "model_parameters": 22372928,
+    "trainable_parameters": 22372928
+  },
+  "summary": {
+    "overall_tactical_accuracy": 75.0,
+    "mate_in_1_accuracy": 80.0,
+    "mate_in_2_accuracy": 60.0,
+    "mate_in_3_accuracy": 100.0,
+    "average_move_quality": 0.6599999999999999,
+    "evaluation_timestamp": "2025-07-04 14:43:58"
+  }
+}
