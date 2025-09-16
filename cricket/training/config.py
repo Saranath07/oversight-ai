@@ -8,7 +8,7 @@ Configuration settings for different training scenarios and model sizes.
 # Base configuration
 BASE_CONFIG = {
     # Data dimensions (from your analysis)
-    'ball_vector_dim': 18,
+    'ball_vector_dim': 22,
     'context_dim': 20,
     'vocab_size': 24,  # Will be updated from actual vocabulary
     

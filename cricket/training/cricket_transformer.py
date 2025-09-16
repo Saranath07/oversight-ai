@@ -36,7 +36,7 @@ class CricketTransformerEncoder(nn.Module):
     """Transformer encoder for match history processing"""
     
     def __init__(self, 
-                 input_dim: int = 18,
+                 input_dim: int = 22,
                  d_model: int = 512,
                  nhead: int = 8,
                  num_layers: int = 6,

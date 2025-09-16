@@ -1,0 +1,103 @@
+================================================================================
+CRICKET PREDICTION STATISTICS ANALYSIS REPORT
+================================================================================
+
+OVERALL SUMMARY
+--------------------
+Total Overs Analyzed: 100
+Predictions per Over: 20
+Total Predictions: 2000
+
+ACCURACY METRICS
+--------------------
+Runs Prediction Accuracy: 1.40% ± 2.56%
+Wickets Prediction Accuracy: 43.00% ± 11.81%
+Ball-by-Ball Accuracy: 0.00% ± 0.00%
+
+ACTUAL OUTCOMES DISTRIBUTION
+------------------------------
+Runs per Over:
+  0 runs: 100 overs (100.0%)
+
+Wickets per Over:
+  0 wickets: 100 overs (100.0%)
+
+================================================================================
+MATCH-BY-MATCH ANALYSIS
+================================================================================
+
+MATCH 542
+--------------------
+Total Overs: 20
+Average Runs Accuracy: 2.50%
+Average Wickets Accuracy: 45.00%
+
+Top 3 Best Runs Predictions:
+  Over 6: 10.0% (0 runs predicted correctly 2/20 times)
+  Over 7: 10.0% (0 runs predicted correctly 2/20 times)
+  Over 2: 5.0% (0 runs predicted correctly 1/20 times)
+Bottom 3 Runs Predictions:
+  Over 16: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 18: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 20: 0.0% (0 runs predicted correctly 0/20 times)
+
+MATCH 864
+--------------------
+Total Overs: 20
+Average Runs Accuracy: 0.75%
+Average Wickets Accuracy: 42.75%
+
+Top 3 Best Runs Predictions:
+  Over 5: 5.0% (0 runs predicted correctly 1/20 times)
+  Over 9: 5.0% (0 runs predicted correctly 1/20 times)
+  Over 14: 5.0% (0 runs predicted correctly 1/20 times)
+Bottom 3 Runs Predictions:
+  Over 18: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 19: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 20: 0.0% (0 runs predicted correctly 0/20 times)
+
+MATCH 794
+--------------------
+Total Overs: 20
+Average Runs Accuracy: 0.75%
+Average Wickets Accuracy: 42.25%
+
+Top 3 Best Runs Predictions:
+  Over 9: 5.0% (0 runs predicted correctly 1/20 times)
+  Over 15: 5.0% (0 runs predicted correctly 1/20 times)
+  Over 16: 5.0% (0 runs predicted correctly 1/20 times)
+Bottom 3 Runs Predictions:
+  Over 18: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 19: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 20: 0.0% (0 runs predicted correctly 0/20 times)
+
+MATCH 1449
+--------------------
+Total Overs: 20
+Average Runs Accuracy: 1.00%
+Average Wickets Accuracy: 44.50%
+
+Top 3 Best Runs Predictions:
+  Over 1: 5.0% (0 runs predicted correctly 1/20 times)
+  Over 11: 5.0% (0 runs predicted correctly 1/20 times)
+  Over 14: 5.0% (0 runs predicted correctly 1/20 times)
+Bottom 3 Runs Predictions:
+  Over 17: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 18: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 19: 0.0% (0 runs predicted correctly 0/20 times)
+
+MATCH 438
+--------------------
+Total Overs: 20
+Average Runs Accuracy: 2.00%
+Average Wickets Accuracy: 40.50%
+
+Top 3 Best Runs Predictions:
+  Over 16: 10.0% (0 runs predicted correctly 2/20 times)
+  Over 1: 5.0% (0 runs predicted correctly 1/20 times)
+  Over 4: 5.0% (0 runs predicted correctly 1/20 times)
+Bottom 3 Runs Predictions:
+  Over 18: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 19: 0.0% (0 runs predicted correctly 0/20 times)
+  Over 20: 0.0% (0 runs predicted correctly 0/20 times)
+

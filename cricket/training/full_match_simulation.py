@@ -17,8 +17,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from training.cricket_transformer import create_cricket_transformer
 
-def load_trained_model(checkpoint_path: str = "checkpoints/best_model.pt"):
-    """Load the trained cricket transformer model"""
+def load_trained_model(checkpoint_path: str = "checkpoints_16_balls_context/best_model.pt"):
+    """Load the trained cricket transformer model (optimized for sliding window approach)"""
     
     # Detect device
     if torch.backends.mps.is_available():
@@ -43,10 +43,19 @@ def load_trained_model(checkpoint_path: str = "checkpoints/best_model.pt"):
     return model, vocabulary, idx_to_token
 
 def create_ball_vector(over_num, ball_num, runs, extras, total_runs, wickets, balls_bowled,
-                      is_wicket=False, extras_type=None, 
+                      is_wicket=False, extras_type=None,
                       batter_avg=35.0, batter_sr=125.0, batter_runs=2500,
-                      bowler_avg=28.0, bowler_sr=22.0, bowler_wickets=150):
-    """Create 18-dimensional ball vector"""
+                      bowler_avg=28.0, bowler_sr=22.0, bowler_wickets=150,
+                      required_rate=6.0, venue_factor=0.5):
+    """Create 22-dimensional ball vector"""
+    
+    # Calculate match phase
+    if over_num <= 6:
+        match_phase = 1.0  # Powerplay
+    elif over_num >= 16:
+        match_phase = 0.0  # Death overs
+    else:
+        match_phase = 0.5  # Middle overs
     
     return [
         # Ball ID (2 dims)
@@ -63,8 +72,10 @@ def create_ball_vector(over_num, ball_num, runs, extras, total_runs, wickets, ba
         1.0 if extras_type == "bye" else 0.0,
         # Batter Stats (3 dims)
         batter_avg / 50.0, batter_sr / 150.0, batter_runs / 5000.0,
-        # Bowler Stats (2 dims)
-        bowler_avg / 40.0, bowler_sr / 30.0
+        # Bowler Stats (3 dims) - Added bowler wickets
+        bowler_avg / 40.0, bowler_sr / 30.0, bowler_wickets / 300.0,
+        # Additional Context (3 dims) - Total 22 dims
+        match_phase, required_rate / 12.0, venue_factor
     ]
 
 def create_context_vector(innings, current_over, current_score, current_wickets, 
@@ -175,11 +186,28 @@ def simulate_innings(model, vocabulary, idx_to_token, team_name, players, bowler
     
     striker_idx = 0
     non_striker_idx = 1
+    next_batsman_idx = 2  # Track next batsman to come in
     
     print(f"Openers: {batting_order[striker_idx]} & {batting_order[non_striker_idx]}")
     
-    # Track individual scores
-    player_scores = {player: {"runs": 0, "balls": 0} for player in batting_order}
+    # Track individual scores with dismissal info
+    player_scores = {player: {
+        "runs": 0,
+        "balls": 0,
+        "out": False,
+        "dismissal_type": None,
+        "bowler": None,
+        "over": None,
+        "ball": None
+    } for player in batting_order}
+    
+    # Track bowling figures
+    bowling_figures = {bowler: {
+        "overs": 0,
+        "runs": 0,
+        "wickets": 0,
+        "balls": 0
+    } for bowler in bowling_order}
     
     # Simulate each over
     for over_num in range(1, 21):
@@ -214,15 +242,20 @@ def simulate_innings(model, vocabulary, idx_to_token, team_name, players, bowler
         
         # Handle empty history for first over
         if len(match_history) == 0:
+            # Calculate initial required rate
+            init_req_rate = target / 20.0 * 6.0 if target else 6.0
             dummy_ball = create_ball_vector(
                 0, 1, 0, 0, 0, 0, 0,
                 batter_avg=striker_stats["avg"], batter_sr=striker_stats["sr"], batter_runs=striker_stats["career_runs"],
-                bowler_avg=bowler_stats["avg"], bowler_sr=bowler_stats["sr"], bowler_wickets=bowler_stats["career_wickets"]
+                bowler_avg=bowler_stats["avg"], bowler_sr=bowler_stats["sr"], bowler_wickets=bowler_stats["career_wickets"],
+                required_rate=init_req_rate, venue_factor=0.5
             )
             history_for_prediction = [dummy_ball]
         else:
-            # Use last 50 balls for context (to avoid memory issues)
-            history_for_prediction = match_history[-50:] if len(match_history) > 50 else match_history
+            # Use sliding window context (8 or 16 balls based on model)
+            # This matches the training approach - only recent balls matter
+            context_window_size = 16  # Default to 16 balls, adjust based on model
+            history_for_prediction = match_history[-context_window_size:] if len(match_history) > context_window_size else match_history
         
         # Predict the over
         predicted_over = predict_over(model, history_for_prediction, context, vocabulary, idx_to_token, temperature=0.9)
@@ -248,6 +281,13 @@ def simulate_innings(model, vocabulary, idx_to_token, team_name, players, bowler
             over_runs += runs
             total_balls += 1
             
+            # Update bowling figures
+            if bowler in bowling_figures:
+                bowling_figures[bowler]["runs"] += runs
+                bowling_figures[bowler]["balls"] += 1
+                if wicket:
+                    bowling_figures[bowler]["wickets"] += 1
+            
             # Update player stats
             if not extra and striker in player_scores:
                 player_scores[striker]["runs"] += runs
@@ -256,23 +296,46 @@ def simulate_innings(model, vocabulary, idx_to_token, team_name, players, bowler
             if wicket:
                 total_wickets += 1
                 over_wickets += 1
+                
+                # Record dismissal details
+                if striker in player_scores:
+                    player_scores[striker]["out"] = True
+                    player_scores[striker]["dismissal_type"] = "out"
+                    player_scores[striker]["bowler"] = bowler
+                    player_scores[striker]["over"] = over_num
+                    player_scores[striker]["ball"] = ball_num
+                
                 # Next batsman comes in
-                if striker_idx + 2 < len(batting_order):
-                    striker_idx += 2
+                if next_batsman_idx < len(batting_order):
+                    striker_idx = next_batsman_idx
+                    next_batsman_idx += 1
                     striker = batting_order[striker_idx] if striker_idx < len(batting_order) else "Tail-ender"
+                else:
+                    # All batsmen used up
+                    striker_idx = len(batting_order)
+                    striker = "Tail-ender"
+            
+            # Calculate current required rate
+            current_req_rate = 6.0  # Default
+            if target and innings_num == 2:
+                balls_remaining = (20 - over_num) * 6 + (6 - ball_num)
+                runs_needed = target - total_score
+                if balls_remaining > 0:
+                    current_req_rate = (runs_needed * 6) / balls_remaining
             
             # Create ball vector for history
             ball_vector = create_ball_vector(
                 over_num, ball_num, runs, 1 if extra else 0, total_score, total_wickets, total_balls,
                 is_wicket=wicket, extras_type=ball_token if extra else None,
                 batter_avg=striker_stats["avg"], batter_sr=striker_stats["sr"], batter_runs=striker_stats["career_runs"],
-                bowler_avg=bowler_stats["avg"], bowler_sr=bowler_stats["sr"], bowler_wickets=bowler_stats["career_wickets"]
+                bowler_avg=bowler_stats["avg"], bowler_sr=bowler_stats["sr"], bowler_wickets=bowler_stats["career_wickets"],
+                required_rate=current_req_rate, venue_factor=0.5
             )
             match_history.append(ball_vector)
             
             # Ball description
             if wicket:
-                ball_desc = f"{ball_token} - WICKET!"
+                ball_desc = f"{ball_token} - WICKET! ({striker} out)"
             elif runs >= 4:
                 ball_desc = f"{ball_token} - BOUNDARY!"
             elif runs == 0:
@@ -281,6 +344,10 @@ def simulate_innings(model, vocabulary, idx_to_token, team_name, players, bowler
                 ball_desc = f"{ball_token}"
             
             ball_details.append(ball_desc)
+        
+        # Update bowler's over count
+        if bowler in bowling_figures:
+            bowling_figures[bowler]["overs"] += 1
         
         # Display over
         print(f"🤖 {' '.join(ball_details)} | {over_runs} runs")
@@ -306,19 +373,65 @@ def simulate_innings(model, vocabulary, idx_to_token, team_name, players, bowler
     print(f"\n📊 INNINGS SUMMARY:")
     print(f"🏏 {team_name}: {total_score}/{total_wickets} in {min(20, over_num)} overs (RR: {run_rate:.1f})")
     
-    # Top scorers
-    top_scorers = sorted([(p, s["runs"], s["balls"]) for p, s in player_scores.items() if s["runs"] > 0], 
-                        key=lambda x: x[1], reverse=True)[:3]
+    # Complete Scorecard
+    print(f"🌟 COMPLETE SCORECARD:")
+    print(f"{'='*80}")
+    print(f"{'Player':<20} {'Runs':<6} {'Balls':<6} {'SR':<8} {'Dismissal':<25}")
+    print(f"{'-'*80}")
     
-    print(f"🌟 Top Scorers:")
-    for i, (player, runs, balls) in enumerate(top_scorers):
+    # Sort by batting order but show all players who batted
+    batted_players = [(player, stats) for player, stats in player_scores.items()
+                     if stats["balls"] > 0 or stats["out"]]
+    
+    for player, stats in batted_players:
+        runs = stats["runs"]
+        balls = stats["balls"]
         sr = (runs / balls * 100) if balls > 0 else 0
-        print(f"   {i+1}. {player}: {runs}* ({balls}b, SR: {sr:.1f})")
+        
+        # Format dismissal info
+        if stats["out"]:
+            dismissal = f"c&b {stats['bowler']} ({stats['over']}.{stats['ball']})"
+        elif balls > 0:
+            dismissal = "not out"
+        else:
+            dismissal = "did not bat"
+        
+        not_out_symbol = "" if stats["out"] else "*"
+        print(f"{player:<20} {runs}{not_out_symbol:<5} {balls:<6} {sr:<8.1f} {dismissal:<25}")
+    
+    # Show players who didn't bat
+    didnt_bat = [player for player in batting_order if player_scores[player]["balls"] == 0 and not player_scores[player]["out"]]
+    if didnt_bat:
+        print(f"{'-'*80}")
+        print(f"Did not bat: {', '.join(didnt_bat)}")
+    
+    # Bowling Figures
+    print(f"\n🎳 BOWLING FIGURES:")
+    print(f"{'='*80}")
+    print(f"{'Bowler':<20} {'Overs':<6} {'Runs':<6} {'Wickets':<8} {'Economy':<10}")
+    print(f"{'-'*80}")
+    
+    bowled_bowlers = [(bowler, figures) for bowler, figures in bowling_figures.items()
+                     if figures["balls"] > 0]
+    
+    for bowler, figures in bowled_bowlers:
+        overs = figures["balls"] // 6
+        balls = figures["balls"] % 6
+        over_str = f"{overs}.{balls}" if balls > 0 else f"{overs}"
+        runs = figures["runs"]
+        wickets = figures["wickets"]
+        economy = (runs * 6) / figures["balls"] if figures["balls"] > 0 else 0.0
+        
+        print(f"{bowler:<20} {over_str:<6} {runs:<6} {wickets:<8} {economy:<10.2f}")
     
     return total_score, total_wickets, over_num
 
-def simulate_full_t20_match():
-    """Simulate a complete T20 match"""
+def simulate_full_t20_match(model_type="16_balls"):
+    """Simulate a complete T20 match using sliding window models
+    
+    Args:
+        model_type: "8_balls" or "16_balls" for different context models
+    """
     
     print("🏏 COMPLETE T20 CRICKET MATCH SIMULATION")
     print("=" * 80)
@@ -327,9 +440,27 @@ def simulate_full_t20_match():
     print("🏆 IPL 2024 Final")
     print("=" * 80)
     
+    # Select model based on context window preference
+    if model_type == "8_balls":
+        checkpoint_path = "checkpoints_8_balls_context/best_model.pt"
+        context_window_size = 8
+        model_description = "8 balls context (immediate patterns)"
+    else:  # default to 16_balls
+        checkpoint_path = "checkpoints_16_balls_context/best_model.pt"
+        context_window_size = 16
+        model_description = "16 balls context (balanced tactical)"
+    
     # Load model
-    model, vocabulary, idx_to_token = load_trained_model()
-    print(f"✓ AI Cricket Predictor loaded and ready!")
+    print(f"🤖 Loading AI model: {model_description}")
+    try:
+        model, vocabulary, idx_to_token = load_trained_model(checkpoint_path)
+        print(f"✓ AI Cricket Predictor loaded and ready!")
+        print(f"✓ Using sliding window approach with {context_window_size} balls context")
+    except FileNotFoundError:
+        print(f"❌ Model not found: {checkpoint_path}")
+        print(f"💡 Train the model first using:")
+        print(f"   python train_{model_type}_context.py")
+        return
     
     # Team setups
     team1 = "Mumbai Indians"
@@ -423,4 +554,16 @@ def simulate_full_t20_match():
     print(f"\n🎊 FULL T20 MATCH SIMULATION COMPLETE!")
 
 if __name__ == "__main__":
-    simulate_full_t20_match()
+    import sys
+    
+    # Allow command line selection of model type
+    if len(sys.argv) > 1:
+        model_type = sys.argv[1]
+        if model_type not in ["8_balls", "16_balls"]:
+            print("Usage: python full_match_simulation.py [8_balls|16_balls]")
+            print("Default: 16_balls")
+            model_type = "16_balls"
+    else:
+        model_type = "16_balls"  # Default to 16 balls context
+    
+    simulate_full_t20_match(model_type)

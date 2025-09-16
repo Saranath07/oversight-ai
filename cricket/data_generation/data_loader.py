@@ -18,21 +18,26 @@ from pathlib import Path
 class CricketDataset(Dataset):
     """PyTorch Dataset for cricket ball-by-ball prediction"""
     
-    def __init__(self, data_dir: str, max_history_length: int = 500):
+    def __init__(self, data_dir: str, max_history_length: int = 500,
+                 use_sliding_window: bool = True, context_window_size: int = 16):
         """
         Initialize the dataset
         
         Args:
             data_dir: Directory containing processed data files
-            max_history_length: Maximum length of match history sequence
+            max_history_length: Maximum length of match history sequence (for legacy mode)
+            use_sliding_window: If True, create multiple samples per match using sliding windows
+            context_window_size: Number of recent balls to use as context (8, 16, 32, etc.)
         """
         self.data_dir = Path(data_dir)
         self.max_history_length = max_history_length
+        self.use_sliding_window = use_sliding_window
+        self.context_window_size = context_window_size
         
         # Load processed data
-        self.match_histories = self._load_pickle('match_histories.pkl')
-        self.contexts = self._load_pickle('contexts.pkl')
-        self.targets = self._load_pickle('targets.pkl')
+        self.raw_match_histories = self._load_pickle('match_histories.pkl')
+        self.raw_contexts = self._load_pickle('contexts.pkl')
+        self.raw_targets = self._load_pickle('targets.pkl')
         
         # Load vocabulary and metadata
         with open(self.data_dir / 'vocabulary.json', 'r') as f:
@@ -44,10 +49,20 @@ class CricketDataset(Dataset):
         # Create reverse vocabulary for decoding
         self.idx_to_token = {v: k for k, v in self.vocabulary.items()}
         
-        # Filter sequences that are too long
-        self._filter_sequences()
+        # Process data based on mode
+        if use_sliding_window:
+            self.training_samples = self._create_sliding_window_samples()
+            print(f"Created {len(self.training_samples)} training samples using sliding windows")
+            print(f"Context window size: {context_window_size} balls")
+        else:
+            # Legacy mode: filter long sequences
+            self.match_histories = self.raw_match_histories
+            self.contexts = self.raw_contexts
+            self.targets = self.raw_targets
+            self._filter_sequences()
+            print(f"Using legacy mode with {len(self.match_histories)} sequences")
+            print(f"Max history length: {max_history_length}")
         
-        print(f"Loaded {len(self.match_histories)} sequences")
         print(f"Ball vector dimension: {self.metadata['ball_vector_dim']}")
         print(f"Context vector dimension: {self.metadata['context_vector_dim']}")
     
@@ -74,33 +89,106 @@ class CricketDataset(Dataset):
         
         print(f"Filtered to {len(self.match_histories)} sequences (max length: {self.max_history_length})")
     
+    def _create_sliding_window_samples(self):
+        """Create training samples using sliding context windows"""
+        samples = []
+        min_context_length = max(4, self.context_window_size // 2)  # At least half the window size
+        
+        for match_idx, match_history in enumerate(self.raw_match_histories):
+            match_context = self.raw_contexts[match_idx]
+            match_target = self.raw_targets[match_idx]
+            
+            # Create multiple samples from this match using sliding windows
+            for ball_idx in range(len(match_history)):
+                
+                # Determine context window bounds
+                context_start = max(0, ball_idx - self.context_window_size + 1)
+                context_end = ball_idx + 1
+                
+                # Get context window (recent balls only)
+                context_history = match_history[context_start:context_end]
+                
+                # Skip if context is too short
+                if len(context_history) < min_context_length:
+                    continue
+                
+                # Skip samples that would predict beyond the match
+                # (to avoid temporal leakage within the same match)
+                if ball_idx >= len(match_history) - 1:
+                    continue
+                
+                # Create sample
+                sample = {
+                    'history': context_history,
+                    'context': match_context,  # Match-level context (venue, teams, etc.)
+                    'target': match_target,
+                    'match_idx': match_idx,
+                    'ball_idx': ball_idx
+                }
+                
+                samples.append(sample)
+        
+        return samples
+    
     def __len__(self):
-        return len(self.match_histories)
+        if self.use_sliding_window:
+            return len(self.training_samples)
+        else:
+            return len(self.match_histories)
     
     def __getitem__(self, idx):
         """Get a single training example"""
         
-        # Convert match history to tensor
-        history = torch.tensor(np.array(self.match_histories[idx]), dtype=torch.float32)
-        
-        # Convert context to tensor
-        context = torch.tensor(self.contexts[idx], dtype=torch.float32)
-        
-        # Convert target tokens to indices
-        target_tokens = self.targets[idx]
-        target_indices = [self.vocabulary.get(token, self.vocabulary['<PAD>']) for token in target_tokens]
-        
-        # Add start and end tokens
-        target_input = [self.vocabulary['<START>']] + target_indices
-        target_output = target_indices + [self.vocabulary['<END>']]
-        
-        return {
-            'history': history,
-            'context': context,
-            'target_input': torch.tensor(target_input, dtype=torch.long),
-            'target_output': torch.tensor(target_output, dtype=torch.long),
-            'target_tokens': target_tokens  # Keep original tokens for debugging
-        }
+        if self.use_sliding_window:
+            # Sliding window mode
+            sample = self.training_samples[idx]
+            
+            # Convert match history to tensor
+            history = torch.tensor(np.array(sample['history']), dtype=torch.float32)
+            
+            # Convert context to tensor
+            context = torch.tensor(sample['context'], dtype=torch.float32)
+            
+            # Convert target tokens to indices
+            target_tokens = sample['target']
+            target_indices = [self.vocabulary.get(token, self.vocabulary['<PAD>']) for token in target_tokens]
+            
+            # Add start and end tokens
+            target_input = [self.vocabulary['<START>']] + target_indices
+            target_output = target_indices + [self.vocabulary['<END>']]
+            
+            return {
+                'history': history,
+                'context': context,
+                'target_input': torch.tensor(target_input, dtype=torch.long),
+                'target_output': torch.tensor(target_output, dtype=torch.long),
+                'target_tokens': target_tokens,  # Keep original tokens for debugging
+                'match_idx': sample['match_idx'],
+                'ball_idx': sample['ball_idx']
+            }
+        else:
+            # Legacy mode
+            # Convert match history to tensor
+            history = torch.tensor(np.array(self.match_histories[idx]), dtype=torch.float32)
+            
+            # Convert context to tensor
+            context = torch.tensor(self.contexts[idx], dtype=torch.float32)
+            
+            # Convert target tokens to indices
+            target_tokens = self.targets[idx]
+            target_indices = [self.vocabulary.get(token, self.vocabulary['<PAD>']) for token in target_tokens]
+            
+            # Add start and end tokens
+            target_input = [self.vocabulary['<START>']] + target_indices
+            target_output = target_indices + [self.vocabulary['<END>']]
+            
+            return {
+                'history': history,
+                'context': context,
+                'target_input': torch.tensor(target_input, dtype=torch.long),
+                'target_output': torch.tensor(target_output, dtype=torch.long),
+                'target_tokens': target_tokens  # Keep original tokens for debugging
+            }
 
 def collate_fn(batch):
     """Custom collate function for batching variable-length sequences"""
@@ -137,20 +225,28 @@ def collate_fn(batch):
 class CricketDataLoader:
     """Wrapper class for creating data loaders"""
     
-    def __init__(self, data_dir: str, batch_size: int = 32, 
-                 max_history_length: int = 500, train_split: float = 0.8):
+    def __init__(self, data_dir: str, batch_size: int = 32,
+                 max_history_length: int = 500, train_split: float = 0.8,
+                 use_sliding_window: bool = True, context_window_size: int = 16):
         """
         Initialize data loaders
         
         Args:
             data_dir: Directory containing processed data
             batch_size: Batch size for training
-            max_history_length: Maximum sequence length
+            max_history_length: Maximum sequence length (legacy mode)
             train_split: Fraction of data for training
+            use_sliding_window: Use sliding window approach for better training
+            context_window_size: Number of recent balls for context (8, 16, 32, etc.)
         """
         
         # Load full dataset
-        full_dataset = CricketDataset(data_dir, max_history_length)
+        full_dataset = CricketDataset(
+            data_dir,
+            max_history_length=max_history_length,
+            use_sliding_window=use_sliding_window,
+            context_window_size=context_window_size
+        )
         
         # Split into train/validation
         total_size = len(full_dataset)
@@ -187,11 +283,16 @@ class CricketDataLoader:
         print(f"  - Training batches: {len(self.train_loader)}")
         print(f"  - Validation batches: {len(self.val_loader)}")
         print(f"  - Batch size: {batch_size}")
+        print(f"  - Mode: {'Sliding Window' if use_sliding_window else 'Legacy'}")
+        if use_sliding_window:
+            print(f"  - Context window: {context_window_size} balls")
+        else:
+            print(f"  - Max history: {max_history_length} balls")
 
 def create_sample_batch(data_dir: str, num_samples: int = 5):
     """Create a sample batch for testing"""
     
-    dataset = CricketDataset(data_dir)
+    dataset = CricketDataset(data_dir, use_sliding_window=True, context_window_size=16)
     
     # Get first few samples
     samples = [dataset[i] for i in range(min(num_samples, len(dataset)))]
@@ -263,7 +364,24 @@ if __name__ == "__main__":
         print_sample_data(data_dir)
         
         # Create data loaders
-        data_loader = CricketDataLoader(data_dir, batch_size=4)
+        # Test both modes
+        print("=== Testing Sliding Window Mode (16 balls context) ===")
+        data_loader_sliding = CricketDataLoader(
+            data_dir,
+            batch_size=4,
+            use_sliding_window=True,
+            context_window_size=16
+        )
+        
+        print("\n=== Testing Legacy Mode ===")
+        data_loader_legacy = CricketDataLoader(
+            data_dir,
+            batch_size=4,
+            use_sliding_window=False,
+            max_history_length=128
+        )
+        
+        data_loader = data_loader_sliding  # Use sliding window for main test
         
         # Test a batch
         for batch in data_loader.train_loader:

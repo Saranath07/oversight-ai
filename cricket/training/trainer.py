@@ -197,15 +197,28 @@ class CricketTrainer:
                 temperature=0.8
             )
         
+        # Ensure generated sequences are the same length as target inputs for training
+        target_seq_len = batch['target_inputs'].shape[1]
+        
         # Use generated sequence as input (except last token)
-        target_inputs = generated[:, :-1]
+        # Truncate or pad to match the target input length
+        if generated.shape[1] - 1 > target_seq_len:
+            # Truncate if too long
+            target_inputs = generated[:, :target_seq_len]
+        else:
+            # Pad with end tokens if too short
+            padding_needed = target_seq_len - (generated.shape[1] - 1)
+            padding = torch.full((batch_size, padding_needed), end_token_id,
+                               dtype=torch.long, device=generated.device)
+            target_inputs = torch.cat([generated[:, :-1], padding], dim=1)
         
         # Forward pass with generated inputs
         logits = self.model(
             histories=batch['histories'],
             contexts=batch['contexts'],
             target_inputs=target_inputs,
-            history_mask=batch['history_mask']
+            history_mask=batch['history_mask'],
+            target_mask=batch['target_mask']  # Add target mask for proper padding handling
         )
         
         # Calculate loss against ground truth
@@ -414,7 +427,7 @@ class CricketTrainer:
 def main():
     """Main training function"""
     
-    # Configuration - optimized for Apple Silicon
+    # Configuration - optimized for Apple Silicon with configurable context windows
     config = {
         # Model architecture
         'ball_vector_dim': 18,
@@ -433,7 +446,11 @@ def main():
         'weight_decay': 0.01,
         'label_smoothing': 0.1,
         'batch_size': 16,  # Smaller batch size for MPS stability
-        'max_history_length': 128,
+        
+        # Context window configuration (NEW APPROACH)
+        'use_sliding_window': True,  # Use realistic short context windows
+        'context_window_size': 16,  # Number of recent balls as context (try 8, 16, 32)
+        'max_history_length': 128,  # Legacy mode fallback (if sliding window disabled)
         
         # Training schedule
         'num_epochs': 100,
@@ -455,14 +472,25 @@ def main():
         print("Please run the data generation pipeline first.")
         return
     
-    # Create data loader
+    # Create data loader with new sliding window approach
     print("Loading data...")
     data_loader = CricketDataLoader(
         data_dir=data_dir,
         batch_size=config['batch_size'],
         max_history_length=config['max_history_length'],
-        train_split=0.8
+        train_split=0.8,
+        use_sliding_window=config['use_sliding_window'],
+        context_window_size=config['context_window_size']
     )
+    
+    print(f"\n=== Training Configuration ===")
+    print(f"Context approach: {'Sliding Window' if config['use_sliding_window'] else 'Legacy'}")
+    if config['use_sliding_window']:
+        print(f"Context window size: {config['context_window_size']} balls")
+        print(f"Benefits: Prevents data leakage, more realistic training")
+    else:
+        print(f"Max history length: {config['max_history_length']} balls")
+    print(f"Batch size: {config['batch_size']}")
     
     # Update config with actual vocabulary size
     config['vocab_size'] = len(data_loader.vocabulary)

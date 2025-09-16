@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from training.cricket_transformer import create_cricket_transformer
 
-def load_trained_model(checkpoint_path: str = "checkpoints/best_model.pt"):
+def load_trained_model(checkpoint_path: str = "checkpoints/best_model_1.pt"):
     """Load the trained cricket transformer model"""
     
     # Detect device
@@ -65,6 +65,7 @@ def create_enhanced_ball_vector(over_num, ball_num, runs, extras, total_runs, wi
     if bowler_match_sr is None:
         bowler_match_sr = bowler_career_sr    # Fallback to career
     
+    # Exactly 22 dimensions as expected by the model
     return [
         # Ball ID (2 dims)
         over_num / 20.0, ball_num / 6.0,
@@ -80,11 +81,16 @@ def create_enhanced_ball_vector(over_num, ball_num, runs, extras, total_runs, wi
         1.0 if extras_type == "bye" else 0.0,
         # Batter Stats (3 dims) - TRAINING USES CAREER STATS
         batter_career_avg / 50.0,           # Career average (as in training)
-        batter_career_sr / 150.0,          # Career strike rate (as in training)  
+        batter_career_sr / 150.0,          # Career strike rate (as in training)
         batter_career_runs / 5000.0,       # Career total runs (as in training)
-        # Bowler Stats (2 dims) - TRAINING USES CAREER STATS
+        # Bowler Stats (3 dims) - TRAINING USES CAREER STATS
         bowler_career_avg / 40.0,          # Career average (as in training)
         bowler_career_sr / 30.0,           # Career strike rate (as in training)
+        bowler_career_wickets / 300.0,     # Career wickets (as in training)
+        # Ball pattern flags (3 dims)
+        1.0 if runs == 0 else 0.0,         # is_dot_ball
+        1.0 if runs == 4 else 0.0,         # is_boundary
+        1.0 if runs == 6 else 0.0,         # is_six
     ]
 
 def create_enhanced_context_vector(innings, current_over, current_score, current_wickets, 

@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from training.cricket_transformer import create_cricket_transformer
 
-def load_trained_model(checkpoint_path: str = "checkpoints/best_model.pt"):
+def load_trained_model(checkpoint_path: str = "checkpoints/best_model_1.pt"):
     """Load the trained cricket transformer model"""
     
     # Detect device
@@ -43,9 +43,9 @@ def load_trained_model(checkpoint_path: str = "checkpoints/best_model.pt"):
     return model, vocabulary, idx_to_token
 
 def create_ball_vector(over_num, ball_num, runs, extras, total_runs, wickets, balls_bowled,
-                      is_wicket=False, extras_type=None, batter_avg=35.0, batter_sr=125.0, 
-                      batter_runs=15, bowler_avg=28.0, bowler_sr=22.0):
-    """Create 18-dimensional ball vector with player stats"""
+                       is_wicket=False, extras_type=None, batter_avg=35.0, batter_sr=125.0,
+                       batter_runs=15, bowler_avg=28.0, bowler_sr=22.0, bowler_wickets=150):
+    """Create 22-dimensional ball vector with player stats"""
     
     return [
         # Ball ID (2 dims)
@@ -62,8 +62,12 @@ def create_ball_vector(over_num, ball_num, runs, extras, total_runs, wickets, ba
         1.0 if extras_type == "bye" else 0.0,
         # Batter Stats (3 dims) - THESE ARE THE BATSMAN INPUTS
         batter_avg / 50.0, batter_sr / 150.0, batter_runs / 100.0,
-        # Bowler Stats (2 dims) - THESE ARE THE BOWLER INPUTS
-        bowler_avg / 40.0, bowler_sr / 30.0
+        # Bowler Stats (3 dims) - THESE ARE THE BOWLER INPUTS
+        bowler_avg / 40.0, bowler_sr / 30.0, 150.0 / 300.0,  # Assume 150 career wickets
+        # Ball pattern flags (3 dims)
+        1.0 if runs == 0 else 0.0,         # is_dot_ball
+        1.0 if runs == 4 else 0.0,         # is_boundary
+        1.0 if runs == 6 else 0.0          # is_six
     ]
 
 def create_context_vector(innings, current_over, current_score, current_wickets, 
@@ -151,7 +155,7 @@ def analyze_prediction_with_stats(prediction, scenario_name, striker_info, non_s
     print(f"   Career Average: {bowler_info['avg']:.1f}")
     print(f"   Career Strike Rate: {bowler_info['sr']:.1f}")
     print(f"   Match Wickets: {bowler_info['match_wickets']}")
-    print(f"   → INPUT TO MODEL: Avg={bowler_info['avg']/40.0:.3f}, SR={bowler_info['sr']/30.0:.3f}, Wickets={bowler_info['match_wickets']/5.0:.3f}")
+    print(f"   → INPUT TO MODEL: Avg={bowler_info['avg']/40.0:.3f}, SR={bowler_info['sr']/30.0:.3f}, Career Wickets=150, Match Wickets={bowler_info['match_wickets']/5.0:.3f}")
     
     print(f"\n🎯 MODEL PREDICTION:")
     print(f"   Predicted Over: {prediction}")
@@ -208,11 +212,11 @@ def test_detailed_scenarios():
     
     # Create match history with specific player stats
     aggressive_history = [
-        create_ball_vector(1, 1, 4, 0, 4, 0, 1, batter_avg=45.0, batter_sr=150.0, batter_runs=25, bowler_avg=32.0, bowler_sr=24.0),
-        create_ball_vector(1, 2, 6, 0, 10, 0, 2, batter_avg=45.0, batter_sr=150.0, batter_runs=31, bowler_avg=32.0, bowler_sr=24.0),
-        create_ball_vector(1, 3, 1, 0, 11, 0, 3, batter_avg=45.0, batter_sr=150.0, batter_runs=32, bowler_avg=32.0, bowler_sr=24.0),
-        create_ball_vector(1, 4, 0, 0, 11, 0, 4, batter_avg=45.0, batter_sr=150.0, batter_runs=32, bowler_avg=32.0, bowler_sr=24.0),
-        create_ball_vector(1, 5, 4, 0, 15, 0, 5, batter_avg=45.0, batter_sr=150.0, batter_runs=36, bowler_avg=32.0, bowler_sr=24.0),
+        create_ball_vector(1, 1, 4, 0, 4, 0, 1, batter_avg=45.0, batter_sr=150.0, batter_runs=25, bowler_avg=32.0, bowler_sr=24.0, bowler_wickets=180),
+        create_ball_vector(1, 2, 6, 0, 10, 0, 2, batter_avg=45.0, batter_sr=150.0, batter_runs=31, bowler_avg=32.0, bowler_sr=24.0, bowler_wickets=180),
+        create_ball_vector(1, 3, 1, 0, 11, 0, 3, batter_avg=45.0, batter_sr=150.0, batter_runs=32, bowler_avg=32.0, bowler_sr=24.0, bowler_wickets=180),
+        create_ball_vector(1, 4, 0, 0, 11, 0, 4, batter_avg=45.0, batter_sr=150.0, batter_runs=32, bowler_avg=32.0, bowler_sr=24.0, bowler_wickets=180),
+        create_ball_vector(1, 5, 4, 0, 15, 0, 5, batter_avg=45.0, batter_sr=150.0, batter_runs=36, bowler_avg=32.0, bowler_sr=24.0, bowler_wickets=180),
     ]
     
     aggressive_context = create_context_vector(1, 2, 15, 0, 
@@ -231,11 +235,11 @@ def test_detailed_scenarios():
     
     # Scenario 2: Defensive batsman vs attacking bowler
     defensive_history = [
-        create_ball_vector(8, 1, 1, 0, 45, 2, 43, batter_avg=28.0, batter_sr=95.0, batter_runs=8, bowler_avg=38.0, bowler_sr=28.0),
-        create_ball_vector(8, 2, 0, 0, 45, 2, 44, batter_avg=28.0, batter_sr=95.0, batter_runs=8, bowler_avg=38.0, bowler_sr=28.0),
-        create_ball_vector(8, 3, 1, 0, 46, 2, 45, batter_avg=28.0, batter_sr=95.0, batter_runs=9, bowler_avg=38.0, bowler_sr=28.0),
-        create_ball_vector(8, 4, 0, 0, 46, 2, 46, batter_avg=28.0, batter_sr=95.0, batter_runs=9, bowler_avg=38.0, bowler_sr=28.0),
-        create_ball_vector(8, 5, 2, 0, 48, 2, 47, batter_avg=28.0, batter_sr=95.0, batter_runs=11, bowler_avg=38.0, bowler_sr=28.0),
+        create_ball_vector(8, 1, 1, 0, 45, 2, 43, batter_avg=28.0, batter_sr=95.0, batter_runs=8, bowler_avg=38.0, bowler_sr=28.0, bowler_wickets=120),
+        create_ball_vector(8, 2, 0, 0, 45, 2, 44, batter_avg=28.0, batter_sr=95.0, batter_runs=8, bowler_avg=38.0, bowler_sr=28.0, bowler_wickets=120),
+        create_ball_vector(8, 3, 1, 0, 46, 2, 45, batter_avg=28.0, batter_sr=95.0, batter_runs=9, bowler_avg=38.0, bowler_sr=28.0, bowler_wickets=120),
+        create_ball_vector(8, 4, 0, 0, 46, 2, 46, batter_avg=28.0, batter_sr=95.0, batter_runs=9, bowler_avg=38.0, bowler_sr=28.0, bowler_wickets=120),
+        create_ball_vector(8, 5, 2, 0, 48, 2, 47, batter_avg=28.0, batter_sr=95.0, batter_runs=11, bowler_avg=38.0, bowler_sr=28.0, bowler_wickets=120),
     ]
     
     defensive_context = create_context_vector(1, 9, 48, 2,
@@ -254,11 +258,11 @@ def test_detailed_scenarios():
     
     # Scenario 3: Power hitter vs death bowler
     power_history = [
-        create_ball_vector(18, 1, 6, 0, 145, 4, 103, batter_avg=35.0, batter_sr=165.0, batter_runs=42, bowler_avg=28.0, bowler_sr=18.0),
-        create_ball_vector(18, 2, 4, 0, 149, 4, 104, batter_avg=35.0, batter_sr=165.0, batter_runs=46, bowler_avg=28.0, bowler_sr=18.0),
-        create_ball_vector(18, 3, 1, 0, 150, 4, 105, batter_avg=35.0, batter_sr=165.0, batter_runs=47, bowler_avg=28.0, bowler_sr=18.0),
-        create_ball_vector(18, 4, 6, 0, 156, 4, 106, batter_avg=35.0, batter_sr=165.0, batter_runs=53, bowler_avg=28.0, bowler_sr=18.0),
-        create_ball_vector(18, 5, 2, 0, 158, 4, 107, batter_avg=35.0, batter_sr=165.0, batter_runs=55, bowler_avg=28.0, bowler_sr=18.0),
+        create_ball_vector(18, 1, 6, 0, 145, 4, 103, batter_avg=35.0, batter_sr=165.0, batter_runs=42, bowler_avg=28.0, bowler_sr=18.0, bowler_wickets=220),
+        create_ball_vector(18, 2, 4, 0, 149, 4, 104, batter_avg=35.0, batter_sr=165.0, batter_runs=46, bowler_avg=28.0, bowler_sr=18.0, bowler_wickets=220),
+        create_ball_vector(18, 3, 1, 0, 150, 4, 105, batter_avg=35.0, batter_sr=165.0, batter_runs=47, bowler_avg=28.0, bowler_sr=18.0, bowler_wickets=220),
+        create_ball_vector(18, 4, 6, 0, 156, 4, 106, batter_avg=35.0, batter_sr=165.0, batter_runs=53, bowler_avg=28.0, bowler_sr=18.0, bowler_wickets=220),
+        create_ball_vector(18, 5, 2, 0, 158, 4, 107, batter_avg=35.0, batter_sr=165.0, batter_runs=55, bowler_avg=28.0, bowler_sr=18.0, bowler_wickets=220),
     ]
     
     power_context = create_context_vector(1, 19, 158, 4,
