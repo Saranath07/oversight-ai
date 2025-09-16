@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from training.cricket_transformer import create_cricket_transformer
 
-def load_trained_model(checkpoint_path: str = "checkpoints_16_balls_context/best_model.pt"):
+def load_trained_model(checkpoint_path: str = "checkpoints_8_balls_context/best_model.pt"):
     """Load the trained cricket transformer model (optimized for sliding window approach)"""
     
     # Detect device

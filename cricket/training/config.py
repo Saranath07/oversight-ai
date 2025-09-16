@@ -26,7 +26,7 @@ BASE_CONFIG = {
     'weight_decay': 0.01,
     'label_smoothing': 0.1,
     'batch_size': 16,  # Optimized for MPS
-    'max_history_length': 128,
+    'max_history_length': 8,
     
     # Training schedule
     'num_epochs': 100,
@@ -48,7 +48,7 @@ SMALL_CONFIG = {
     'num_encoder_layers': 4,
     'num_decoder_layers': 4,
     'dim_feedforward': 1024,
-    'batch_size': 8,
+    'batch_size': 128,
     'num_epochs': 20,
     'teacher_forcing_epochs': 10
 }
