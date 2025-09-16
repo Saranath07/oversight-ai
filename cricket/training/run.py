@@ -86,7 +86,7 @@ def run_training(config_name='base', epochs=None):
         model = create_cricket_transformer(config)
         
         # Create trainer
-        trainer = CricketTrainer(model, data_loader, config)
+        trainer = CricketTrainer(model, data_loader, config, save_dir="checkpoints-8-balls-context")
         
         # Start training
         trainer.train(
